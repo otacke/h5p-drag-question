@@ -81,7 +81,7 @@
       {
         "name": "task",
         "type": "group",
-        "widget": "dragQuestion",
+        "widget": "dragQuestionLernlinie",
         "label": "Task",
         "importance": "high",
         "description": "Start by placing your drop zones.<br/>Next, place your droppable elements and check off the appropriate drop zones.<br/>Last, edit your drop zone again and check off the correct answers.",

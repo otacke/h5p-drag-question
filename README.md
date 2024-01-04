@@ -1,9 +1,13 @@
-H5P Drag Question
+H5P Drag Question (Lernlinie)
 ==========
 
 Drag and drop the elements into the correct drop zones.
 Test your users with drag and drop tasks.
 Can be used in Question Sets, Course Presentations and Interactive Videos.
+
+## Changes to H5P.DragQuestion 1.14.5
+- Merge in https://github.com/h5p/h5p-drag-question/pull/91 to allow audio elements
+- Update modules
 
 ## License
 

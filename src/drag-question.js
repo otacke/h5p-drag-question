@@ -885,10 +885,10 @@ C.prototype.resetTask = function () {
     this.dropZones.forEach(function (dropzone) {
       dropzone.reset();
     });
-  
+
     // Enables Draggables
     this.enableDraggables();
-  
+
     //Reset position and feedback.
     this.draggables.forEach(function (draggable) {
       draggable.resetPosition();
@@ -1197,4 +1197,4 @@ var getControls = function (draggables, dropZones, noDropzone) {
   return controls;
 };
 
-H5P.DragQuestion = C;
+H5P.DragQuestionLERNLINIE = C;
