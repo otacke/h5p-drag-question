@@ -82,7 +82,6 @@ function C(options, contentId, contentData) {
 
   this.draggables = [];
   this.dropZones = [];
-  this.answered = (contentData && contentData.previousState !== undefined && contentData.previousState.answers !== undefined && contentData.previousState.answers.length);
   this.blankIsCorrect = true;
 
   this.backgroundOpacity = (this.options.behaviour.backgroundOpacity === undefined || this.options.behaviour.backgroundOpacity.trim() === '') ? undefined : this.options.behaviour.backgroundOpacity;
@@ -148,14 +147,8 @@ function C(options, contentId, contentData) {
       element.backgroundOpacity = this.backgroundOpacity;
     }
 
-    // Restore answers from last session
-    var answers = null;
-    if (contentData && contentData.previousState !== undefined && contentData.previousState.answers !== undefined && contentData.previousState.answers[i] !== undefined) {
-      answers = contentData.previousState.answers[i];
-    }
-
     // Create new draggable instance
-    var draggable = new Draggable(element, i, answers, grabbablel10n, task.dropZones, draggableNum++);
+    var draggable = new Draggable(element, i, grabbablel10n, task.dropZones, draggableNum++);
     var highlightDropZones = (self.options.behaviour.dropZoneHighlighting === 'dragging');
     draggable.on('elementadd', function (event) {
       controls.drag.addElement(event.data);
@@ -250,6 +243,11 @@ function C(options, contentId, contentData) {
       }
     });
   }
+
+  // DOM elements need to be in place
+  window.requestAnimationFrame(() => {
+    this.setCurrentState(contentData.previousState);
+  });
 
   this.on('resize', self.resize, self);
   this.on('domChanged', function(event) {
@@ -863,9 +861,11 @@ C.prototype.showSolutions = function () {
 /**
  * Resets the task.
  * Used in contracts.
+ * @params {object} params Parameters. Not part of contract
+ * @params {boolean} params.skipAnimation If true, will skip animation for reset.
  * @public
  */
-C.prototype.resetTask = function () {
+C.prototype.resetTask = function (params = {}) {
   this.points = 0;
   this.rawPoints = 0;
   this.answered = false;
@@ -881,7 +881,7 @@ C.prototype.resetTask = function () {
 
     //Reset position and feedback.
     this.draggables.forEach(function (draggable) {
-      draggable.resetPosition();
+      draggable.resetPosition({ skipAnimation: params.skipAnimation });
     });
   } else {
     // Reset actual position values
@@ -1018,6 +1018,89 @@ C.prototype.getCurrentState = function () {
   }
 
   return state;
+};
+
+/**
+ * Set current state.
+ * @param {object} state State to set, must match return value structure of getCurrentState.
+ */
+C.prototype.setCurrentState = function (state = {}) {
+  state = this.sanitizeState(state);
+
+  this.resetTask({ skipAnimation: true });
+
+  for (let i = 0; i < this.draggables.length; i++) {
+    const answers = state.answers[i];
+    if (answers === undefined) {
+      continue; // No answers for this draggable
+    }
+
+    const draggable = this.draggables[i];
+    draggable.elements = draggable.elements.filter(element => element !== undefined);
+
+    /*
+     * `resetTask` will have removed all elements of a draggable that can have multiple instances.
+     * + 1 accounts for the base element.
+     */
+    while (draggable.multiple && draggable.elements.length < answers.length + 1) {
+      draggable.elements[0].clone();
+    }
+
+    for (let j = 0; j < answers.length; j++) {
+      const answer = answers[j];
+      const index = j + (draggable.multiple ? 1 : 0); // First element is base element
+
+      /*
+       * `resestTask` will also reposition the draggable elements, so of the following call was
+       * moved into the next animation frame, flickering would occur.
+       * The `resetPosition` method could then be amended to not reposition the elements in DOM.
+       */
+      draggable.elements[index].position = { left: `${answer.x}%`, top: `${answer.y}%` };
+      draggable.elements[index].$.css(draggable.elements[index].position);
+      draggable.addToDropZone(draggable.elements.length, draggable.elements[index], answer.dz);
+    }
+  }
+};
+
+/**
+ * Sanitize a state object.
+ * @param {object} state State object.
+ * @returns {object} Sanitized state object.
+ */
+C.prototype.sanitizeState = function (state = {}) {
+  const sanitizedState = {
+    answers: []
+  };
+
+  if (!state || typeof state !== 'object' || !Array.isArray(state.answers)) {
+    return sanitizedState;
+  }
+
+  // Sanitize answers
+  const sanitizeAnswer = (answer) => {
+    if (!Array.isArray(answer)) {
+      return [];
+    }
+
+    return answer.filter(answerItem =>
+      answerItem !== null && typeof answerItem === 'object' &&
+      typeof answerItem.x === 'number' &&
+      typeof answerItem.y === 'number' &&
+      Number.isInteger(answerItem.dz)
+    );
+  }
+
+  for (let i = 0; i < state.answers.length; i++) {
+    const answer = state.answers[i];
+    if (answer === undefined) {
+      sanitizedState.answers.push(undefined); // Preserve empty slots
+    } else {
+      const sanitizedAnswer = sanitizeAnswer(answer);
+      sanitizedState.answers.push(sanitizedAnswer.length ? sanitizedAnswer : undefined);
+    }
+  }
+
+  return sanitizedState;
 };
 
 C.prototype.getTitle = function() {

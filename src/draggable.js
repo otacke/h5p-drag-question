@@ -13,11 +13,11 @@ export default class Draggable extends H5P.EventDispatcher {
    * @class
    * @param {Object} element
    * @param {number} id
-   * @param {Array} [answers] from last session
    * @param {Object.<string, string>} l10n
    * @param {Array} [dropZones] Dropzones for a draggable
+   * @param {number} draggableNum Number of the draggable
    */
-  constructor(element, id, answers, l10n, dropZones, draggableNum) {
+  constructor(element, id, l10n, dropZones, draggableNum) {
     super();
     var self = this;
 
@@ -35,24 +35,6 @@ export default class Draggable extends H5P.EventDispatcher {
     self.l10n = l10n;
     self.allDropzones = dropZones;
     self.draggableNum = draggableNum;
-
-    if (answers) {
-      if (self.multiple) {
-        // Add base element
-        self.elements.push({});
-      }
-
-      // Add answers
-      for (var i = 0; i < answers.length; i++) {
-        self.elements.push({
-          dropZone: answers[i].dz,
-          position: {
-            left: answers[i].x + '%',
-            top: answers[i].y + '%'
-          }
-        });
-      }
-    }
   }
 
   /**
@@ -347,7 +329,7 @@ export default class Draggable extends H5P.EventDispatcher {
   /**
    * Resets the position of the draggable to its' original position.
    */
-  resetPosition() {
+  resetPosition(params = {}) {
     var self = this;
 
     this.elements.forEach(function (draggable) {
@@ -361,11 +343,7 @@ export default class Draggable extends H5P.EventDispatcher {
       if (draggable.dropZone !== undefined) {
         var element = draggable.$;
 
-        //Revert the button to initial position and then remove it.
-        element.animate({
-          left: self.x + '%',
-          top: self.y + '%'
-        }, function () {
+        const removeInfinityDraggable = () => {
           //Remove the draggable if it is an infinity draggable.
           if (self.multiple) {
             if (element.dropZone !== undefined) {
@@ -378,7 +356,27 @@ export default class Draggable extends H5P.EventDispatcher {
             }
             self.trigger('elementremove', element[0]);
           }
-        });
+        };
+
+        //Revert the button to initial position and then remove it.
+        if (params.skipAnimation) {
+          element.css({
+            left: self.x + '%',
+            top: self.y + '%'
+          });
+          removeInfinityDraggable();
+
+        }
+        else {
+          element.animate(
+            {
+              left: self.x + '%',
+              top: self.y + '%'
+            }, () => {
+              removeInfinityDraggable();
+            }
+          );
+        }
 
         // Reset element style
         self.updatePlacement(draggable);
